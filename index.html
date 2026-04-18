@@ -137,7 +137,56 @@
     .btn-reset { width: 100%; justify-content: center; }
   }
 
-  /* ════════════════════ STATS BAR ════════════════════ */
+  /* ════════════════════ MOBILE SEARCH BAR ════════════════════ */
+  #mobile-search {
+    display: none;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px 0;
+  }
+  #mobile-search input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: var(--sans);
+    font-size: 16px; padding: 10px 14px; outline: none;
+    -webkit-appearance: none; appearance: none;
+    transition: border-color 0.15s;
+  }
+  #mobile-search input:focus { border-color: var(--accent); }
+
+  /* ════════════════════ QUICK CHIPS ════════════════════ */
+  #quick-chips {
+    display: none;
+    padding: 8px 12px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto; white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+  }
+  #quick-chips::-webkit-scrollbar { display: none; }
+  .qchip {
+    display: inline-flex; align-items: center;
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    padding: 5px 12px; border-radius: 20px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg); color: var(--muted);
+    white-space: nowrap; touch-action: manipulation;
+    transition: all 0.15s; user-select: none;
+  }
+  .qchip.active { border-color: transparent; color: #fff; }
+  .qchip.active.chip-remun  { background: #10b981; }
+  .qchip.active.chip-equiv  { background: #3b82f6; }
+  .qchip.active.chip-noadj  { background: #64748b; }
+  .qchip.active.chip-gd1    { background: #059669; }
+  .qchip.active.chip-gd2    { background: #2563eb; }
+  .qchip.active.chip-gd3    { background: #d97706; }
+  .qchip.active.chip-gd4    { background: #dc2626; }
+  .qchip.active.chip-gd5    { background: #7c3aed; }
+  .qchip.active.chip-zaf    { background: #b45309; }
+
+  @media (max-width: 768px) {
+    #mobile-search { display: block; }
+    #quick-chips   { display: flex; }
+  }
   #stats-bar {
     background: var(--bg);
     border-bottom: 1px solid var(--border);
@@ -256,6 +305,24 @@
 
 <!-- App -->
 <div id="app">
+
+  <!-- Mobile search bar (always visible on phone) -->
+  <div id="mobile-search">
+    <input type="text" id="f-nombre-mobile" placeholder="🔍  Buscar por nombre..." autocomplete="off" autocorrect="off" spellcheck="false">
+  </div>
+
+  <!-- Quick filter chips (mobile only) -->
+  <div id="quick-chips">
+    <span class="qchip chip-remun"  onclick="toggleChip(this,'modalidad','REMUNERADO')">Remunerado</span>
+    <span class="qchip chip-equiv"  onclick="toggleChip(this,'modalidad','EQUIVALENTE')">Equivalente</span>
+    <span class="qchip chip-noadj"  onclick="toggleChip(this,'modalidad','NO_ADJUDICADO')">No adj.</span>
+    <span class="qchip chip-gd1"    onclick="toggleChip(this,'gd','GD-1')">GD-1</span>
+    <span class="qchip chip-gd2"    onclick="toggleChip(this,'gd','GD-2')">GD-2</span>
+    <span class="qchip chip-gd3"    onclick="toggleChip(this,'gd','GD-3')">GD-3</span>
+    <span class="qchip chip-gd4"    onclick="toggleChip(this,'gd','GD-4')">GD-4</span>
+    <span class="qchip chip-gd5"    onclick="toggleChip(this,'gd','GD-5')">GD-5</span>
+    <span class="qchip chip-zaf"    onclick="toggleChip(this,'zaf','SI')">ZAF ✦</span>
+  </div>
 
   <!-- Filter toggle (mobile only) -->
   <div id="filter-toggle" onclick="toggleFilters()">
@@ -385,7 +452,32 @@ function parseCSV(text) {
   }).filter(r => r['APELLIDOS Y NOMBRES']);
 }
 
-// ── Auto-load CSV from same directory ────────────────────────────────────
+// ── Quick chips ───────────────────────────────────────────────────────────
+const chipState = { modalidad: null, gd: null, zaf: null };
+
+function toggleChip(el, type, value) {
+  if (chipState[type] === value) {
+    // deactivate
+    chipState[type] = null;
+    el.classList.remove('active');
+  } else {
+    // deactivate previous in same group
+    document.querySelectorAll(`[onclick*="'${type}'"]`).forEach(c => c.classList.remove('active'));
+    chipState[type] = value;
+    el.classList.add('active');
+  }
+  // sync with hidden selects
+  if (type === 'modalidad') document.getElementById('f-modalidad').value = chipState.modalidad || '';
+  if (type === 'gd')        document.getElementById('f-gd').value        = chipState.gd || '';
+  if (type === 'zaf')       document.getElementById('f-zaf').value       = chipState.zaf || '';
+  applyFilters();
+}
+
+// mobile search syncs to main nombre input
+document.getElementById('f-nombre-mobile').addEventListener('input', function() {
+  document.getElementById('f-nombre').value = this.value;
+  applyFilters();
+});
 async function autoLoad() {
   try {
     const res = await fetch('medicina_inscritos_adjudicado.csv');
@@ -486,6 +578,9 @@ function applyFilters() {
 function resetFilters() {
   ['f-nombre','f-nota-min','f-nota-max'].forEach(id => document.getElementById(id).value = '');
   ['f-modalidad','f-gd','f-depto','f-pres','f-cat','f-zaf','f-region'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-nombre-mobile').value = '';
+  document.querySelectorAll('.qchip').forEach(c => c.classList.remove('active'));
+  chipState.modalidad = null; chipState.gd = null; chipState.zaf = null;
   applyFilters();
 }
 
