@@ -596,8 +596,16 @@ function sortBy(col) {
 }
 function sortData() {
   filtered.sort((a, b) => {
-    const av = parseFloat(a[sortCol]) || a[sortCol] || '';
-    const bv = parseFloat(b[sortCol]) || b[sortCol] || '';
+    let av, bv;
+    if (sortCol === 'NOTA') {
+      av = parseFloat(a[sortCol]) || -Infinity;
+      bv = parseFloat(b[sortCol]) || -Infinity;
+    } else {
+      av = parseFloat(a[sortCol]);
+      bv = parseFloat(b[sortCol]);
+      if (isNaN(av)) av = a[sortCol] || '';
+      if (isNaN(bv)) bv = b[sortCol] || '';
+    }
     return av < bv ? -sortDir : av > bv ? sortDir : 0;
   });
 }
