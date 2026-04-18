@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SERUMS 2025-1 — Explorador</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg:      #0d0f14;
+    --surface: #161922;
+    --border:  #252a36;
+    --accent:  #3b82f6;
+    --green:   #10b981;
+    --amber:   #f59e0b;
+    --red:     #ef4444;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --mono:    'IBM Plex Mono', monospace;
+    --sans:    'IBM Plex Sans', sans-serif;
+    --header-h: 56px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+
+  /* ════════════════════ HEADER ════════════════════ */
+  header {
+    height: var(--header-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: none;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 200;
+  }
+  .logo { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+  .header-title { flex: 1; min-width: 0; }
+  .header-title h1 { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header-title p  { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  #row-count {
+    font-family: var(--mono); font-size: 11px; color: var(--green);
+    background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25);
+    padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+  }
+  /* mobile: hide subtitle */
+  @media (max-width: 600px) {
+    .header-title p { display: none; }
+    .logo { display: none; }
+  }
+
+  /* ════════════════════ LOAD SCREEN ════════════════════ */
+  #load-zone {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 24px;
+  }
+
+  /* ════════════════════ APP SHELL ════════════════════ */
+  #app {
+    display: none; flex-direction: column;
+    position: fixed; inset: 0;
+    padding-top: var(--header-h);
+  }
+
+  /* ════════════════════ FILTER TOGGLE (mobile) ════════════════════ */
+  #filter-toggle {
+    display: none;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  #filter-toggle .ft-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  #filter-toggle .ft-right  { display: flex; align-items: center; gap: 8px; }
+  #active-count {
+    font-family: var(--mono); font-size: 11px; color: var(--amber);
+    background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25);
+    padding: 2px 7px; border-radius: 3px; display: none;
+  }
+  #filter-arrow { font-size: 12px; color: var(--muted); transition: transform 0.2s; }
+  #filter-arrow.open { transform: rotate(180deg); }
+
+  @media (max-width: 768px) { #filter-toggle { display: flex; } }
+
+  /* ════════════════════ FILTER BAR ════════════════════ */
+  #filter-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+  }
+  /* desktop always visible */
+  @media (min-width: 769px) { #filter-bar { max-height: 200px !important; } }
+  /* mobile: collapsed by default */
+  @media (max-width: 768px) {
+    #filter-bar { max-height: 0; padding-top: 0; padding-bottom: 0; }
+    #filter-bar.open { max-height: 600px; padding: 12px 16px; }
+  }
+
+  .filter-group { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
+  .filter-group.wide { min-width: 200px; }
+  .filter-group label {
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .filter-group select, .filter-group input {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-family: var(--sans); font-size: 14px;
+    padding: 8px 10px; outline: none; height: 38px;
+    transition: border-color 0.15s; width: 100%;
+    -webkit-appearance: none; appearance: none;
+  }
+  .filter-group select:focus, .filter-group input:focus { border-color: var(--accent); }
+  .btn-reset {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+    height: 38px; align-self: flex-end; transition: border-color 0.15s, color 0.15s;
+    touch-action: manipulation;
+  }
+  .btn-reset:hover, .btn-reset:active { border-color: var(--red); color: var(--red); }
+
+  /* on mobile, filters go full-width */
+  @media (max-width: 768px) {
+    .filter-group { min-width: calc(50% - 5px); flex: 1 1 calc(50% - 5px); }
+    .filter-group.wide { min-width: 100%; flex: 1 1 100%; }
+    .btn-reset { width: 100%; justify-content: center; }
+  }
+
+  /* ════════════════════ STATS BAR ════════════════════ */
+  #stats-bar {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex; gap: 20px; flex-wrap: nowrap;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  #stats-bar::-webkit-scrollbar { display: none; }
+  .stat { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+  .stat .lbl {
+    font-family: var(--mono); font-size: 9px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
+  }
+  .stat .val { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--accent); }
+  .stat .val.g { color: var(--green); }
+  .stat .val.a { color: var(--amber); }
+  .stat .val.r { color: var(--red); }
+
+  /* ════════════════════ TABLE AREA ════════════════════ */
+  #table-wrap { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ── Desktop table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { position: sticky; top: 0; z-index: 10; background: #1a1f2e; }
+  thead th {
+    padding: 10px 14px; text-align: left;
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+    border-bottom: 2px solid var(--border); white-space: nowrap;
+    cursor: pointer; user-select: none; transition: color 0.15s;
+  }
+  thead th:hover { color: var(--text); }
+  thead th.sort-asc::after  { content: ' ▲'; color: var(--accent); }
+  thead th.sort-desc::after { content: ' ▼'; color: var(--accent); }
+  tbody tr { border-bottom: 1px solid rgba(37,42,54,0.7); transition: background 0.1s; }
+  tbody tr:hover { background: rgba(59,130,246,0.06); }
+  td { padding: 9px 14px; white-space: nowrap; vertical-align: middle; }
+
+  /* ── Mobile cards ── */
+  .m-card {
+    display: none;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: background 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .m-card:active { background: rgba(59,130,246,0.08); }
+  .m-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .m-card-name { font-size: 14px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m-card-nota { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+  .m-card-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .m-chip {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+  }
+  .m-detail {
+    display: none; margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .m-detail.hidden { display: none !important; }
+  .m-field { display: flex; flex-direction: column; gap: 2px; }
+  .m-field .mfl { font-size: 10px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+  .m-field .mfv { font-size: 13px; color: var(--text); }
+
+  @media (max-width: 768px) {
+    table, thead, tbody, tr, th, td { display: none !important; }
+    .m-card { display: block; }
+  }
+  @media (min-width: 769px) { .m-card { display: none !important; } }
+
+  /* ── Badges ── */
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-family: var(--mono); font-size: 11px; font-weight: 600; }
+  .b-remun { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+  .b-equiv  { background: rgba(59,130,246,0.15); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); }
+  .b-no     { background: rgba(100,116,139,0.15); color: #64748b; border: 1px solid rgba(100,116,139,0.25); }
+  .b-gd1 { background: rgba(16,185,129,0.12); color: #6ee7b7; }
+  .b-gd2 { background: rgba(59,130,246,0.12); color: #93c5fd; }
+  .b-gd3 { background: rgba(245,158,11,0.12); color: #fcd34d; }
+  .b-gd4 { background: rgba(239,68,68,0.12);  color: #fca5a5; }
+  .b-gd5 { background: rgba(139,92,246,0.12); color: #c4b5fd; }
+  .nota-h { color: #10b981; } .nota-m { color: #f59e0b; } .nota-l { color: #ef4444; }
+  .nota-cell { font-family: var(--mono); font-weight: 600; }
+  .zaf-y { color: var(--amber); font-family: var(--mono); font-size: 11px; font-weight: 600; }
+  .zaf-n { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+  #no-results { display: none; text-align: center; padding: 60px 20px; color: var(--muted); font-family: var(--mono); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Loading screen (auto-fetch) -->
+<div id="load-zone">
+  <div style="text-align:center">
+    <div class="icon" style="font-size:48px;margin-bottom:16px">⏳</div>
+    <div id="load-msg" style="font-family:var(--mono);font-size:13px;color:var(--muted)">Cargando datos...</div>
+  </div>
+</div>
+
+<!-- Header -->
+<header id="main-header">
+  <div class="logo">SERUMS</div>
+  <div class="header-title">
+    <h1>Explorador SERUMS 2025-1</h1>
+    <p>medicina_inscritos_adjudicado.csv</p>
+  </div>
+  <span id="row-count">—</span>
+</header>
+
+<!-- App -->
+<div id="app">
+
+  <!-- Filter toggle (mobile only) -->
+  <div id="filter-toggle" onclick="toggleFilters()">
+    <span class="ft-label">🔍 Filtros</span>
+    <div class="ft-right">
+      <span id="active-count"></span>
+      <span id="filter-arrow">▼</span>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div id="filter-bar">
+    <div class="filter-group wide">
+      <label>Buscar nombre</label>
+      <input type="text" id="f-nombre" placeholder="Apellidos o nombres..." autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="filter-group">
+      <label>Modalidad</label>
+      <select id="f-modalidad">
+        <option value="">Todas</option>
+        <option value="REMUNERADO">Remunerado</option>
+        <option value="EQUIVALENTE">Equivalente</option>
+        <option value="NO_ADJUDICADO">No adjudicado</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Grado (GD)</label>
+      <select id="f-gd"><option value="">Todos</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Departamento</label>
+      <select id="f-depto"><option value="">Todos</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Presupuesto</label>
+      <select id="f-pres"><option value="">Todos</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Categoría</label>
+      <select id="f-cat"><option value="">Todas</option></select>
+    </div>
+    <div class="filter-group">
+      <label>ZAF</label>
+      <select id="f-zaf">
+        <option value="">Todos</option>
+        <option value="SI">SI</option>
+        <option value="NO">NO</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Región evaluación</label>
+      <select id="f-region"><option value="">Todas</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Nota mínima</label>
+      <input type="number" id="f-nota-min" placeholder="ej. 13.00" step="0.2" min="0" max="20">
+    </div>
+    <div class="filter-group">
+      <label>Nota máxima</label>
+      <input type="number" id="f-nota-max" placeholder="ej. 17.20" step="0.2" min="0" max="20">
+    </div>
+    <button class="btn-reset" onclick="resetFilters()">✕ Limpiar filtros</button>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="stats-bar">
+    <div class="stat"><span class="lbl">Mostrando</span><span class="val"   id="s-total">—</span></div>
+    <div class="stat"><span class="lbl">Promedio</span> <span class="val a" id="s-avg">—</span></div>
+    <div class="stat"><span class="lbl">Mediana</span>  <span class="val a" id="s-med">—</span></div>
+    <div class="stat"><span class="lbl">Máx</span>      <span class="val g" id="s-max">—</span></div>
+    <div class="stat"><span class="lbl">Mín</span>      <span class="val r" id="s-min">—</span></div>
+    <div class="stat"><span class="lbl">Remunerado</span><span class="val g" id="s-remun">—</span></div>
+    <div class="stat"><span class="lbl">Equivalente</span><span class="val"  id="s-equiv">—</span></div>
+    <div class="stat"><span class="lbl">No adj.</span>  <span class="val r" id="s-noadj">—</span></div>
+  </div>
+
+  <!-- Table (desktop) / Cards (mobile) -->
+  <div id="table-wrap">
+    <!-- Desktop table -->
+    <table id="data-table">
+      <thead><tr>
+        <th onclick="sortBy('N°')"                 data-col="N°">N°</th>
+        <th onclick="sortBy('APELLIDOS Y NOMBRES')" data-col="APELLIDOS Y NOMBRES">Nombre</th>
+        <th onclick="sortBy('REGIÓN DE EVALUACIÓN')" data-col="REGIÓN DE EVALUACIÓN">Región</th>
+        <th onclick="sortBy('NOTA')"               data-col="NOTA">Nota</th>
+        <th onclick="sortBy('MODALIDAD_ADJ')"      data-col="MODALIDAD_ADJ">Modalidad</th>
+        <th onclick="sortBy('ADJ_GRADO')"          data-col="ADJ_GRADO">GD</th>
+        <th onclick="sortBy('ADJ_DEPARTAMENTO')"   data-col="ADJ_DEPARTAMENTO">Departamento</th>
+        <th onclick="sortBy('ADJ_PROVINCIA')"      data-col="ADJ_PROVINCIA">Provincia</th>
+        <th onclick="sortBy('ADJ_PRESUPUESTO')"    data-col="ADJ_PRESUPUESTO">Presupuesto</th>
+        <th onclick="sortBy('ADJ_CATEGORIA')"      data-col="ADJ_CATEGORIA">Cat.</th>
+        <th onclick="sortBy('ADJ_ESTABLECIMIENTO')" data-col="ADJ_ESTABLECIMIENTO">Establecimiento</th>
+        <th onclick="sortBy('ADJ_ZAF')"            data-col="ADJ_ZAF">ZAF</th>
+        <th onclick="sortBy('ADJ_ZE')"             data-col="ADJ_ZE">ZE</th>
+      </tr></thead>
+      <tbody id="table-body"></tbody>
+    </table>
+    <!-- Mobile cards container -->
+    <div id="cards-body"></div>
+    <div id="no-results">Sin resultados para los filtros seleccionados.</div>
+  </div>
+</div>
+
+<script>
+const isMobile = () => window.innerWidth <= 768;
+
+let allData = [], filtered = [];
+let sortCol = 'NOTA', sortDir = -1;
+let filtersOpen = false;
+
+// ── CSV Parser ──────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  return lines.slice(1).map(line => {
+    const vals = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    vals.push(cur.trim());
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = (vals[i] || '').trim());
+    return obj;
+  }).filter(r => r['APELLIDOS Y NOMBRES']);
+}
+
+// ── Auto-load CSV from same directory ────────────────────────────────────
+async function autoLoad() {
+  try {
+    const res = await fetch('medicina_inscritos_adjudicado.csv');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    allData = parseCSV(text);
+    initApp();
+  } catch (err) {
+    document.getElementById('load-msg').innerHTML =
+      `<span style="color:var(--red)">Error al cargar CSV:<br>${err.message}<br><br>` +
+      `Asegúrate de que <code>medicina_inscritos_adjudicado.csv</code><br>` +
+      `esté en la misma carpeta que este HTML.</span>`;
+  }
+}
+autoLoad();
+
+// ── Init ─────────────────────────────────────────────────────────────────
+function initApp() {
+  document.getElementById('load-zone').style.display = 'none';
+  document.getElementById('main-header').style.display = 'flex';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('row-count').textContent = `${allData.length} registros`;
+  populateSelects();
+  attachFilterListeners();
+  applyFilters();
+}
+
+function uniqueSorted(col) {
+  return [...new Set(allData.map(r => r[col]).filter(v => v && v !== ''))].sort();
+}
+function populateSelects() {
+  [['f-gd','ADJ_GRADO'],['f-depto','ADJ_DEPARTAMENTO'],['f-pres','ADJ_PRESUPUESTO'],
+   ['f-cat','ADJ_CATEGORIA'],['f-region','REGIÓN DE EVALUACIÓN']].forEach(([id, col]) => {
+    const sel = document.getElementById(id);
+    uniqueSorted(col).forEach(v => {
+      const o = document.createElement('option'); o.value = o.textContent = v; sel.appendChild(o);
+    });
+  });
+}
+function attachFilterListeners() {
+  ['f-nombre','f-modalidad','f-gd','f-depto','f-pres','f-cat','f-zaf','f-region','f-nota-min','f-nota-max']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', applyFilters);
+    });
+}
+
+// ── Filter toggle (mobile) ────────────────────────────────────────────────
+function toggleFilters() {
+  filtersOpen = !filtersOpen;
+  document.getElementById('filter-bar').classList.toggle('open', filtersOpen);
+  document.getElementById('filter-arrow').classList.toggle('open', filtersOpen);
+}
+
+function countActiveFilters() {
+  const ids = ['f-nombre','f-modalidad','f-gd','f-depto','f-pres','f-cat','f-zaf','f-region','f-nota-min','f-nota-max'];
+  return ids.filter(id => document.getElementById(id).value !== '').length;
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────
+function applyFilters() {
+  const nombre   = document.getElementById('f-nombre').value.trim().toUpperCase();
+  const modalidad = document.getElementById('f-modalidad').value;
+  const gd       = document.getElementById('f-gd').value;
+  const depto    = document.getElementById('f-depto').value;
+  const pres     = document.getElementById('f-pres').value;
+  const cat      = document.getElementById('f-cat').value;
+  const zaf      = document.getElementById('f-zaf').value;
+  const region   = document.getElementById('f-region').value;
+  const notaMin  = parseFloat(document.getElementById('f-nota-min').value) || -Infinity;
+  const notaMax  = parseFloat(document.getElementById('f-nota-max').value) || Infinity;
+
+  filtered = allData.filter(r => {
+    const nota = parseFloat(r['NOTA']) || 0;
+    if (nombre    && !r['APELLIDOS Y NOMBRES'].toUpperCase().includes(nombre)) return false;
+    if (modalidad && r['MODALIDAD_ADJ'] !== modalidad)       return false;
+    if (gd        && r['ADJ_GRADO'] !== gd)                  return false;
+    if (depto     && r['ADJ_DEPARTAMENTO'] !== depto)        return false;
+    if (pres      && r['ADJ_PRESUPUESTO'] !== pres)          return false;
+    if (cat       && r['ADJ_CATEGORIA'] !== cat)             return false;
+    if (zaf       && r['ADJ_ZAF'] !== zaf)                   return false;
+    if (region    && r['REGIÓN DE EVALUACIÓN'] !== region)   return false;
+    if (r['NOTA'] && (nota < notaMin || nota > notaMax))     return false;
+    return true;
+  });
+
+  // update active filter badge
+  const ac = countActiveFilters();
+  const acEl = document.getElementById('active-count');
+  if (ac > 0) { acEl.textContent = ac + ' activos'; acEl.style.display = 'inline'; }
+  else { acEl.style.display = 'none'; }
+
+  sortData();
+  renderStats();
+  renderAll();
+}
+
+function resetFilters() {
+  ['f-nombre','f-nota-min','f-nota-max'].forEach(id => document.getElementById(id).value = '');
+  ['f-modalidad','f-gd','f-depto','f-pres','f-cat','f-zaf','f-region'].forEach(id => document.getElementById(id).value = '');
+  applyFilters();
+}
+
+// ── Sort ─────────────────────────────────────────────────────────────────
+function sortBy(col) {
+  sortDir = sortCol === col ? sortDir * -1 : (col === 'NOTA' ? -1 : 1);
+  sortCol = col;
+  document.querySelectorAll('thead th').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.dataset.col === col) th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+  });
+  sortData(); renderAll();
+}
+function sortData() {
+  filtered.sort((a, b) => {
+    const av = parseFloat(a[sortCol]) || a[sortCol] || '';
+    const bv = parseFloat(b[sortCol]) || b[sortCol] || '';
+    return av < bv ? -sortDir : av > bv ? sortDir : 0;
+  });
+}
+
+// ── Stats ────────────────────────────────────────────────────────────────
+function median(arr) {
+  if (!arr.length) return null;
+  const s = [...arr].sort((a,b)=>a-b), m = Math.floor(s.length/2);
+  return s.length % 2 ? s[m] : (s[m-1]+s[m])/2;
+}
+function renderStats() {
+  const notas = filtered.map(r => parseFloat(r['NOTA'])).filter(n => !isNaN(n));
+  document.getElementById('s-total').textContent = filtered.length.toLocaleString();
+  document.getElementById('s-avg').textContent   = notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(2) : '—';
+  document.getElementById('s-med').textContent   = notas.length ? median(notas).toFixed(2) : '—';
+  document.getElementById('s-max').textContent   = notas.length ? Math.max(...notas).toFixed(2) : '—';
+  document.getElementById('s-min').textContent   = notas.length ? Math.min(...notas).toFixed(2) : '—';
+  document.getElementById('s-remun').textContent = filtered.filter(r=>r['MODALIDAD_ADJ']==='REMUNERADO').length.toLocaleString();
+  document.getElementById('s-equiv').textContent = filtered.filter(r=>r['MODALIDAD_ADJ']==='EQUIVALENTE').length.toLocaleString();
+  document.getElementById('s-noadj').textContent = filtered.filter(r=>r['MODALIDAD_ADJ']==='NO_ADJUDICADO').length.toLocaleString();
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+function modalBadge(m) {
+  if (m==='REMUNERADO')    return `<span class="badge b-remun">REMUN</span>`;
+  if (m==='EQUIVALENTE')   return `<span class="badge b-equiv">EQUIV</span>`;
+  if (m==='NO_ADJUDICADO') return `<span class="badge b-no">NO ADJ</span>`;
+  return `<span class="badge b-no">${m}</span>`;
+}
+function gdBadge(gd) {
+  const cls = {'GD-1':'gd1','GD-2':'gd2','GD-3':'gd3','GD-4':'gd4','GD-5':'gd5'}[gd]||'';
+  return gd ? `<span class="badge b-${cls}">${gd}</span>` : '—';
+}
+function notaClass(n) { return n >= 14 ? 'nota-h' : n >= 12 ? 'nota-m' : 'nota-l'; }
+function notaCell(nota) {
+  const n = parseFloat(nota);
+  if (isNaN(n)) return '<span class="nota-cell nota-l">—</span>';
+  return `<span class="nota-cell ${notaClass(n)}">${n.toFixed(2)}</span>`;
+}
+function zafCell(v) {
+  return v==='SI' ? `<span class="zaf-y">✦ SI</span>` : `<span class="zaf-n">—</span>`;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+const PAGE = 200;
+let page = 0;
+
+function renderAll() {
+  page = 0;
+  const nr = document.getElementById('no-results');
+  document.getElementById('table-body').innerHTML = '';
+  document.getElementById('cards-body').innerHTML = '';
+  if (!filtered.length) { nr.style.display = 'block'; return; }
+  nr.style.display = 'none';
+  renderPage(true);
+}
+
+function renderPage(reset) {
+  const chunk = filtered.slice(page * PAGE, (page + 1) * PAGE);
+  if (isMobile()) renderCards(chunk);
+  else            renderRows(chunk);
+}
+
+// Desktop rows
+function renderRows(chunk) {
+  const tbody = document.getElementById('table-body');
+  const frag = document.createDocumentFragment();
+  chunk.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--muted);font-family:var(--mono)">${r['N°']||''}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r['APELLIDOS Y NOMBRES']||''}</td>
+      <td style="color:var(--muted)">${r['REGIÓN DE EVALUACIÓN']||''}</td>
+      <td>${notaCell(r['NOTA'])}</td>
+      <td>${modalBadge(r['MODALIDAD_ADJ'])}</td>
+      <td>${gdBadge(r['ADJ_GRADO'])}</td>
+      <td>${r['ADJ_DEPARTAMENTO']||'—'}</td>
+      <td style="color:var(--muted)">${r['ADJ_PROVINCIA']||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${r['ADJ_PRESUPUESTO']||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${r['ADJ_CATEGORIA']||'—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:12px">${r['ADJ_ESTABLECIMIENTO']||'—'}</td>
+      <td>${zafCell(r['ADJ_ZAF'])}</td>
+      <td>${zafCell(r['ADJ_ZE'])}</td>`;
+    frag.appendChild(tr);
+  });
+  document.getElementById('table-body').appendChild(frag);
+}
+
+// Mobile cards
+function renderCards(chunk) {
+  const container = document.getElementById('cards-body');
+  const frag = document.createDocumentFragment();
+  chunk.forEach((r, idx) => {
+    const nota = parseFloat(r['NOTA']);
+    const notaStr = isNaN(nota) ? '—' : nota.toFixed(2);
+    const notaCls = isNaN(nota) ? 'nota-l' : notaClass(nota);
+    const card = document.createElement('div');
+    card.className = 'm-card';
+    card.innerHTML = `
+      <div class="m-card-top">
+        <div class="m-card-name">${r['APELLIDOS Y NOMBRES']||''}</div>
+        <div class="m-card-nota ${notaCls}">${notaStr}</div>
+      </div>
+      <div class="m-card-row">
+        ${modalBadge(r['MODALIDAD_ADJ'])}
+        ${gdBadge(r['ADJ_GRADO'])}
+        ${r['ADJ_DEPARTAMENTO'] ? `<span class="m-chip" style="background:rgba(255,255,255,0.06);color:var(--text)">${r['ADJ_DEPARTAMENTO']}</span>` : ''}
+        ${r['ADJ_PRESUPUESTO']  ? `<span class="m-chip" style="background:rgba(255,255,255,0.04);color:var(--muted)">${r['ADJ_PRESUPUESTO']}</span>` : ''}
+        ${r['ADJ_ZAF']==='SI'  ? `<span class="m-chip" style="background:rgba(245,158,11,0.12);color:#fcd34d">ZAF ✦</span>` : ''}
+      </div>
+      <div class="m-detail hidden" id="det-${page*PAGE+idx}">
+        <div class="m-field"><span class="mfl">Región eval.</span><span class="mfv">${r['REGIÓN DE EVALUACIÓN']||'—'}</span></div>
+        <div class="m-field"><span class="mfl">Provincia</span><span class="mfv">${r['ADJ_PROVINCIA']||'—'}</span></div>
+        <div class="m-field"><span class="mfl">Distrito</span><span class="mfv">${r['ADJ_DISTRITO']||'—'}</span></div>
+        <div class="m-field"><span class="mfl">Categoría</span><span class="mfv">${r['ADJ_CATEGORIA']||'—'}</span></div>
+        <div class="m-field" style="grid-column:1/-1"><span class="mfl">Establecimiento</span><span class="mfv">${r['ADJ_ESTABLECIMIENTO']||'—'}</span></div>
+        <div class="m-field"><span class="mfl">ZAF</span><span class="mfv">${r['ADJ_ZAF']||'—'}</span></div>
+        <div class="m-field"><span class="mfl">ZE</span><span class="mfv">${r['ADJ_ZE']||'—'}</span></div>
+        <div class="m-field"><span class="mfl">DIRESA</span><span class="mfv">${r['ADJ_DIRESA']||'—'}</span></div>
+      </div>`;
+    const detId = `det-${page*PAGE+idx}`;
+    card.addEventListener('click', () => {
+      const det = document.getElementById(detId);
+      det.classList.toggle('hidden');
+    });
+    frag.appendChild(card);
+  });
+  container.appendChild(frag);
+}
+
+// Infinite scroll
+document.getElementById('table-wrap').addEventListener('scroll', function() {
+  if (this.scrollTop + this.clientHeight >= this.scrollHeight - 150) {
+    if ((page + 1) * PAGE < filtered.length) {
+      page++;
+      renderPage(false);
+    }
+  }
+});
+
+// Re-render on resize (desktop ↔ mobile switch)
+let lastMobile = isMobile();
+window.addEventListener('resize', () => {
+  const nowMobile = isMobile();
+  if (nowMobile !== lastMobile) { lastMobile = nowMobile; renderAll(); }
+});
+</script>
+</body>
+</html>
