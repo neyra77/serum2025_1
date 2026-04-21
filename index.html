@@ -485,6 +485,9 @@ async function autoLoad() {
     const text = await res.text();
     allData = parseCSV(text);
     initApp();
+    allData = parseCSV(text);
+    initApp();
+    showNewPopup();
   } catch (err) {
     document.getElementById('load-msg').innerHTML =
       `<span style="color:var(--red)">Error al cargar CSV:<br>${err.message}<br><br>` +
@@ -753,5 +756,15 @@ window.addEventListener('resize', () => {
   if (nowMobile !== lastMobile) { lastMobile = nowMobile; renderAll(); }
 });
 </script>
+  <div id="new-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center;padding:20px;" onclick="document.getElementById('new-popup').style.display='none'">
+  <div onclick="event.stopPropagation()" style="background:#161922;border:1px solid #252a36;border-radius:16px;padding:32px;max-width:320px;width:100%;text-align:center;">
+    <div style="font-size:32px;margin-bottom:12px">🎉</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#10b981;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px">Nuevo</div>
+    <h2 style="font-size:17px;font-weight:700;color:#e2e8f0;margin-bottom:10px">SERUMS 2026-I ya disponible</h2>
+    <p style="font-size:13px;color:#64748b;line-height:1.5;margin-bottom:24px">Las plazas remuneradas y equivalentes para SERUMS 2026-I ya están publicadas.</p>
+    <a href="https://neyra77.github.io/serums2026_1/" target="_blank" style="display:block;background:#3b82f6;color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:600;font-size:13px;margin-bottom:10px">Ver plazas 2026-I →</a>
+    <button onclick="document.getElementById('new-popup').style.display='none'" style="background:transparent;border:1px solid #252a36;color:#64748b;padding:9px 24px;border-radius:8px;cursor:pointer;font-size:13px;width:100%">Quedarse aquí</button>
+  </div>
+</div>
 </body>
 </html>
