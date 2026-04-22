@@ -485,8 +485,6 @@ async function autoLoad() {
     const text = await res.text();
     allData = parseCSV(text);
     initApp();
-    allData = parseCSV(text);
-    initApp();
     showNewPopup();
   } catch (err) {
     document.getElementById('load-msg').innerHTML =
@@ -680,7 +678,7 @@ function renderRows(chunk, offset) {
   chunk.forEach((r, i) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td style="color:var(--muted)>${offset + i + 1}</td>
+      <td style="color:var(--muted);font-family:var(--mono)">${offset + i + 1}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r['APELLIDOS Y NOMBRES']||''}</td>
       <td style="color:var(--muted)">${r['REGIÓN DE EVALUACIÓN']||''}</td>
       <td>${notaCell(r['NOTA'])}</td>
@@ -703,7 +701,7 @@ function showNewPopup() {
 }
   
 // Mobile cards
-ffunction renderCards(chunk, offset) {
+function renderCards(chunk, offset) {
   const container = document.getElementById('cards-body');
   const frag = document.createDocumentFragment();
   chunk.forEach((r, idx) => {
@@ -725,7 +723,7 @@ ffunction renderCards(chunk, offset) {
         ${r['ADJ_PRESUPUESTO']  ? `<span class="m-chip" style="background:rgba(255,255,255,0.04);color:var(--muted)">${r['ADJ_PRESUPUESTO']}</span>` : ''}
         ${r['ADJ_ZAF']==='SI'  ? `<span class="m-chip" style="background:rgba(245,158,11,0.12);color:#fcd34d">ZAF ✦</span>` : ''}
       </div>
-      <<div class="m-detail hidden" id="det-${offset + idx}">
+      <div class="m-detail hidden" id="det-${offset + idx}">
         <div class="m-field"><span class="mfl">Región eval.</span><span class="mfv">${r['REGIÓN DE EVALUACIÓN']||'—'}</span></div>
         <div class="m-field"><span class="mfl">Provincia</span><span class="mfv">${r['ADJ_PROVINCIA']||'—'}</span></div>
         <div class="m-field"><span class="mfl">Distrito</span><span class="mfv">${r['ADJ_DISTRITO']||'—'}</span></div>
