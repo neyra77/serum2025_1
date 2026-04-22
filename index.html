@@ -404,7 +404,7 @@
     <!-- Desktop table -->
     <table id="data-table">
       <thead><tr>
-        <th onclick="sortBy('N°')"                 data-col="N°">N°</th>
+        <th data-col="N°" style="cursor:default">N°</th>
         <th onclick="sortBy('APELLIDOS Y NOMBRES')" data-col="APELLIDOS Y NOMBRES">Nombre</th>
         <th onclick="sortBy('REGIÓN DE EVALUACIÓN')" data-col="REGIÓN DE EVALUACIÓN">Región</th>
         <th onclick="sortBy('NOTA')"               data-col="NOTA">Nota</th>
@@ -667,19 +667,20 @@ function renderAll() {
 }
 
 function renderPage(reset) {
-  const chunk = filtered.slice(page * PAGE, (page + 1) * PAGE);
-  if (isMobile()) renderCards(chunk);
-  else            renderRows(chunk);
+  const offset = page * PAGE;
+  const chunk = filtered.slice(offset, offset + PAGE);
+  if (isMobile()) renderCards(chunk, offset);
+  else            renderRows(chunk, offset);
 }
 
 // Desktop rows
-function renderRows(chunk) {
+function renderRows(chunk, offset) {
   const tbody = document.getElementById('table-body');
   const frag = document.createDocumentFragment();
-  chunk.forEach(r => {
+  chunk.forEach((r, i) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td style="color:var(--muted);font-family:var(--mono)">${r['N°']||''}</td>
+      <td style="color:var(--muted)>${offset + i + 1}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r['APELLIDOS Y NOMBRES']||''}</td>
       <td style="color:var(--muted)">${r['REGIÓN DE EVALUACIÓN']||''}</td>
       <td>${notaCell(r['NOTA'])}</td>
@@ -702,10 +703,11 @@ function showNewPopup() {
 }
   
 // Mobile cards
-function renderCards(chunk) {
+ffunction renderCards(chunk, offset) {
   const container = document.getElementById('cards-body');
   const frag = document.createDocumentFragment();
   chunk.forEach((r, idx) => {
+    const detId = `det-${offset + idx}`;
     const nota = parseFloat(r['NOTA']);
     const notaStr = isNaN(nota) ? '—' : nota.toFixed(2);
     const notaCls = isNaN(nota) ? 'nota-l' : notaClass(nota);
@@ -723,7 +725,7 @@ function renderCards(chunk) {
         ${r['ADJ_PRESUPUESTO']  ? `<span class="m-chip" style="background:rgba(255,255,255,0.04);color:var(--muted)">${r['ADJ_PRESUPUESTO']}</span>` : ''}
         ${r['ADJ_ZAF']==='SI'  ? `<span class="m-chip" style="background:rgba(245,158,11,0.12);color:#fcd34d">ZAF ✦</span>` : ''}
       </div>
-      <div class="m-detail hidden" id="det-${page*PAGE+idx}">
+      <<div class="m-detail hidden" id="det-${offset + idx}">
         <div class="m-field"><span class="mfl">Región eval.</span><span class="mfv">${r['REGIÓN DE EVALUACIÓN']||'—'}</span></div>
         <div class="m-field"><span class="mfl">Provincia</span><span class="mfv">${r['ADJ_PROVINCIA']||'—'}</span></div>
         <div class="m-field"><span class="mfl">Distrito</span><span class="mfv">${r['ADJ_DISTRITO']||'—'}</span></div>
@@ -733,7 +735,7 @@ function renderCards(chunk) {
         <div class="m-field"><span class="mfl">ZE</span><span class="mfv">${r['ADJ_ZE']||'—'}</span></div>
         <div class="m-field"><span class="mfl">DIRESA</span><span class="mfv">${r['ADJ_DIRESA']||'—'}</span></div>
       </div>`;
-    const detId = `det-${page*PAGE+idx}`;
+    
     card.addEventListener('click', () => {
       const det = document.getElementById(detId);
       det.classList.toggle('hidden');
